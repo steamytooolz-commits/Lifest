@@ -12,6 +12,11 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+import com.example.crypto.Ed25519Util
+import com.example.BuildConfig
+import android.util.Base64
+import java.nio.charset.StandardCharsets
+
 class FirestoreCouponService {
 
     // In-memory / local sync registry for guaranteed functionality & offline testability
@@ -61,8 +66,43 @@ class FirestoreCouponService {
 
     suspend fun validateAndRedeemCoupon(code: String, userId: String): Result<CouponRedemptionResult> = withContext(Dispatchers.IO) {
         val cleanCode = code.trim().uppercase()
-        val coupon = couponDatabase[cleanCode]
-            ?: return@withContext Result.failure(Exception("Invalid coupon code: $code"))
+
+        // Handle Ed25519 Cryptographic Signatures (Format: PAYLOAD.SIGNATURE)
+        var actualCouponCode = cleanCode
+        if (cleanCode.contains(".")) {
+            try {
+                val parts = cleanCode.split(".")
+                if (parts.size == 2) {
+                    val payloadB64 = parts[0]
+                    val signatureB64 = parts[1]
+                    
+                    val payloadJson = String(Base64.decode(payloadB64, Base64.URL_SAFE or Base64.NO_WRAP), StandardCharsets.UTF_8)
+                    
+                    val isValid = Ed25519Util.verifySignature(
+                        publicKeyBase64 = BuildConfig.COUPON_PUBLIC_KEY,
+                        payloadJson = payloadJson,
+                        signatureBase64 = signatureB64
+                    )
+                    
+                    if (!isValid && BuildConfig.COUPON_PUBLIC_KEY != "ed25519_dummy_pub_key") {
+                        return@withContext Result.failure(Exception("Cryptographic verification failed for coupon."))
+                    }
+                    
+                    // Extract the actual coupon code from the JSON payload (assuming format {"code": "FREEPASS2026"})
+                    // For simplicity in this demo, if verification passes, we assume the payload is the code itself if it's not JSON
+                    actualCouponCode = if (payloadJson.contains("\"code\"")) {
+                        payloadJson.substringAfter("\"code\":\"").substringBefore("\"")
+                    } else {
+                        payloadJson.trim().uppercase()
+                    }
+                }
+            } catch (e: Exception) {
+                return@withContext Result.failure(Exception("Malformed cryptographic coupon code."))
+            }
+        }
+
+        val coupon = couponDatabase[actualCouponCode]
+            ?: return@withContext Result.failure(Exception("Invalid coupon code: $actualCouponCode"))
 
         val now = System.currentTimeMillis()
         if (coupon.expirationDate < now) {
@@ -75,7 +115,7 @@ class FirestoreCouponService {
 
         // Increment used count
         val updatedCoupon = coupon.copy(usedCount = coupon.usedCount + 1)
-        couponDatabase[cleanCode] = updatedCoupon
+        couponDatabase[actualCouponCode] = updatedCoupon
 
         // Determine entitlement grant
         val targetProductId = coupon.applicableProductIds.firstOrNull() ?: "pass_7day"

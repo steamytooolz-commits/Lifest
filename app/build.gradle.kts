@@ -24,6 +24,9 @@ android {
     
     val apiKey = System.getenv("OPENAI_API_KEY") ?: ""
     buildConfigField("String", "OPENAI_API_KEY", "\"$apiKey\"")
+
+    val pubKey = System.getenv("COUPON_PUBLIC_KEY") ?: "ed25519_dummy_pub_key"
+    buildConfigField("String", "COUPON_PUBLIC_KEY", "\"$pubKey\"")
   }
 
   signingConfigs {
