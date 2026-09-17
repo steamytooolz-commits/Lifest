@@ -81,17 +81,31 @@ class AiRepository(
         } catch (e: Exception) {
             // Fallback: Use built-in simulated intelligent agent or OpenAI API
             try {
-                val openAiResponse = FallbackApiClient.api.createChatCompletion(
-                    authHeader = "Bearer dummy_key",
-                    request = OpenAiChatRequest(
-                        model = "gpt-4o-mini",
-                        messages = listOf(
-                            OpenAiMessage(role = "system", content = systemPrompt),
-                            OpenAiMessage(role = "user", content = playerInput)
-                        )
+                val apiKey = com.example.BuildConfig.OPENAI_API_KEY.ifBlank { "dummy_key" }
+                val request = OpenAiChatRequest(
+                    model = "gpt-4o-mini",
+                    messages = listOf(
+                        OpenAiMessage(role = "system", content = systemPrompt),
+                        OpenAiMessage(role = "user", content = playerInput)
                     )
                 )
-                rawResponse = openAiResponse.choices?.firstOrNull()?.message?.content ?: ""
+                
+                var attempt = 0
+                var success = false
+                while (attempt < 3 && !success) {
+                    try {
+                        val openAiResponse = FallbackApiClient.api.createChatCompletion(
+                            authHeader = "Bearer $apiKey",
+                            request = request
+                        )
+                        rawResponse = openAiResponse.choices?.firstOrNull()?.message?.content ?: ""
+                        success = true
+                    } catch (retryError: Exception) {
+                        attempt++
+                        if (attempt >= 3) throw retryError
+                        kotlinx.coroutines.delay((1000 * Math.pow(2.0, attempt.toDouble())).toLong())
+                    }
+                }
             } catch (fallbackError: Exception) {
                 isFallback = true
                 rawResponse = generateProceduralNpcReply(playerInput, npc, playerRel)

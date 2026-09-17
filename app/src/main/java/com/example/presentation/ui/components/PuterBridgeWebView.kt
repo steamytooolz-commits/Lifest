@@ -39,6 +39,12 @@ fun PuterBridgeWebView(
                     layoutParams = ViewGroup.LayoutParams(1, 1)
                 }
             }
+        },
+        update = { },
+        onRelease = { view ->
+            if (view is WebView) {
+                view.destroy()
+            }
         }
     )
 }

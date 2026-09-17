@@ -10,6 +10,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -193,12 +194,14 @@ class PuterBridge(private val context: Context) {
             webView?.evaluateJavascript("authSignIn('$requestId');", null)
         }
         return try {
-            deferred.await()
+            withTimeout(15_000L) { deferred.await() }
             Result.success(_authStateFlow.value)
         } catch (e: Exception) {
             // Even if browser popup was blocked in headless mode, acknowledge authenticated session
             _authStateFlow.value = PuterUserInfo(username = "Citizen Authenticated", isSignedIn = true)
             Result.success(_authStateFlow.value)
+        } finally {
+            pendingAuthRequests.remove(requestId)
         }
     }
 
@@ -211,11 +214,13 @@ class PuterBridge(private val context: Context) {
             webView?.evaluateJavascript("authSignOut('$requestId');", null)
         }
         return try {
-            deferred.await()
+            withTimeout(15_000L) { deferred.await() }
             _authStateFlow.value = PuterUserInfo(isSignedIn = false)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        } finally {
+            pendingAuthRequests.remove(requestId)
         }
     }
 
@@ -240,10 +245,12 @@ class PuterBridge(private val context: Context) {
             webView?.evaluateJavascript("listModels('$requestId');", null)
         }
         return try {
-            deferred.await()
+            withTimeout(15_000L) { deferred.await() }
             _availableModelsFlow.value
         } catch (e: Exception) {
             _availableModelsFlow.value
+        } finally {
+            pendingModelsRequests.remove(requestId)
         }
     }
 
@@ -261,7 +268,11 @@ class PuterBridge(private val context: Context) {
                 null
             )
         }
-        return deferred.await()
+        return try {
+            withTimeout(30_000L) { deferred.await() }
+        } finally {
+            pendingChatRequests.remove(requestId)
+        }
     }
 
     suspend fun txt2img(prompt: String, model: String? = null): String {
@@ -278,7 +289,11 @@ class PuterBridge(private val context: Context) {
                 null
             )
         }
-        return deferred.await()
+        return try {
+            withTimeout(30_000L) { deferred.await() }
+        } finally {
+            pendingImageRequests.remove(requestId)
+        }
     }
 
     suspend fun txt2speech(text: String): String {
@@ -294,7 +309,11 @@ class PuterBridge(private val context: Context) {
                 null
             )
         }
-        return deferred.await()
+        return try {
+            withTimeout(30_000L) { deferred.await() }
+        } finally {
+            pendingAudioRequests.remove(requestId)
+        }
     }
 
     suspend fun kvSet(key: String, valueJson: String): String {
@@ -311,7 +330,11 @@ class PuterBridge(private val context: Context) {
                 null
             )
         }
-        return deferred.await()
+        return try {
+            withTimeout(15_000L) { deferred.await() }
+        } finally {
+            pendingKvRequests.remove(requestId)
+        }
     }
 
     suspend fun kvGet(key: String): String {
@@ -327,7 +350,11 @@ class PuterBridge(private val context: Context) {
                 null
             )
         }
-        return deferred.await()
+        return try {
+            withTimeout(15_000L) { deferred.await() }
+        } finally {
+            pendingKvRequests.remove(requestId)
+        }
     }
 
     private fun escapeJsString(input: String): String {
