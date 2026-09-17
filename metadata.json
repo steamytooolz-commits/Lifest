@@ -1,0 +1,6 @@
+{
+  "name": "AI Life Simulator",
+  "description": "Text-based AI life simulation with dynamic world generation, OCEAN personality NPCs, Russell emotions, deep memory, careers, economics, and emergent storytelling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

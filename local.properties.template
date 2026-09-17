@@ -1,0 +1,17 @@
+## Local Development Configuration & Keys
+## Copy this file to local.properties (do NOT commit local.properties to git)
+
+## Android SDK location (automatically set by Android Studio)
+# sdk.dir=/Users/yourname/Library/Android/sdk
+
+## PocketBase Backend Configuration
+POCKETBASE_URL=http://10.0.2.2:8090
+
+## Cryptographic Coupon Public Key (Ed25519 Base64)
+COUPON_PUBLIC_KEY=
+
+## In-App Admin Shared Secret
+ADMIN_SHARED_SECRET=SuperSecretAdminPassphrase2026
+
+## AI Provider Fallback Key (Optional direct OpenAI API key)
+OPENAI_API_KEY=

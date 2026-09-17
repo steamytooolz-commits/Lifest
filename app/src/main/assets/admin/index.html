@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Life Simulator — PocketBase Developer Admin Console</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <span class="logo">⚡</span>
+            <h2>AI LIFE SIM</h2>
+        </div>
+        <nav>
+            <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-btn" data-tab="approvals">Subscription Approvals <span class="badge" style="background:#ffb300;color:#0b0f19;">Pending</span></button>
+            <button class="nav-btn" data-tab="coupons">Coupons & Passes</button>
+            <button class="nav-btn" data-tab="users">Citizens & Users</button>
+            <button class="nav-btn" data-tab="entitlements">Entitlements</button>
+            <button class="nav-btn" data-tab="analytics">Telemetry</button>
+            <button class="nav-btn" data-tab="audit">Audit Log</button>
+            <button class="nav-btn" data-tab="server">Server Health</button>
+        </nav>
+    </div>
+
+    <main class="main-content">
+        <header>
+            <h1 id="page-title">Command Center</h1>
+            <div class="header-status">
+                <span id="pb-status" class="status-indicator">● PocketBase Active</span>
+                <span class="badge" id="port-badge">NanoHTTPD Port 8080</span>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="tab-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Active Timelines</span>
+                    <h3 id="stat-lives">1,248</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Pass Holders</span>
+                    <h3 id="stat-paid">384</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Coupons Claimed</span>
+                    <h3 id="stat-coupons">512</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">System Memory Load</span>
+                    <h3 id="stat-mem">2.8 MB</h3>
+                </div>
+            </div>
+
+            <div class="card recent-activity">
+                <h3>Live Simulation Event Stream</h3>
+                <ul id="event-stream" class="log-stream">
+                    <li><span class="time">[10:42:01]</span> User #4912 passed away (Age 84) — Legacy: Legendary Diplomat</li>
+                    <li><span class="time">[10:41:45]</span> Macro Director triggered Economic Boom (+14% investment yield)</li>
+                    <li><span class="time">[10:41:20]</span> New Life generated: "Aria Thorne" in Neo-Tokyo</li>
+                    <li><span class="time">[10:40:05]</span> PocketBase hook executed: Ed25519 coupon verified</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Subscription Approvals Section -->
+        <section id="approvals" class="tab-section">
+            <div class="card">
+                <h3>Admin Subscription Review Queue</h3>
+                <p style="color: #94a3b8; font-size: 13px; margin-bottom: 16px;">
+                    Google Play bypassed. Review citizen pass requests directly. Approving immediately issues cryptographic entitlement tokens.
+                </p>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Citizen</th>
+                            <th>Requested Pass</th>
+                            <th>Price</th>
+                            <th>Requested At</th>
+                            <th>Status</th>
+                            <th>Admin Decision</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvals-table-body">
+                        <tr id="req-1">
+                            <td><code>usr_a4f91e</code> (Alex Thorne)</td>
+                            <td>30-Day Master Pass</td>
+                            <td>$8.99</td>
+                            <td>Just now</td>
+                            <td><span class="badge" style="background:#ffb300;color:#0b0f19;">PENDING</span></td>
+                            <td>
+                                <button class="action-btn" style="background:#00e676;color:#0b0f19;padding:6px 12px;font-size:12px;" onclick="approveSub('req-1')">Approve Pass</button>
+                                <button class="revoke-btn" style="padding:6px 12px;font-size:12px;" onclick="rejectSub('req-1')">Reject</button>
+                            </td>
+                        </tr>
+                        <tr id="req-2">
+                            <td><code>usr_c902bb</code> (Evelyn Reed)</td>
+                            <td>Lifetime Universe Pass</td>
+                            <td>$24.99</td>
+                            <td>5 mins ago</td>
+                            <td><span class="badge" style="background:#ffb300;color:#0b0f19;">PENDING</span></td>
+                            <td>
+                                <button class="action-btn" style="background:#00e676;color:#0b0f19;padding:6px 12px;font-size:12px;" onclick="approveSub('req-2')">Approve Pass</button>
+                                <button class="revoke-btn" style="padding:6px 12px;font-size:12px;" onclick="rejectSub('req-2')">Reject</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Coupons Section -->
+        <section id="coupons" class="tab-section">
+            <div class="card">
+                <h3>Generate Ed25519 Signed Coupon</h3>
+                <form id="coupon-form" class="form-grid">
+                    <div class="form-group">
+                        <label>Coupon Code</label>
+                        <input type="text" id="coupon-code" placeholder="e.g. MULTIVERSE2026" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Discount Percentage</label>
+                        <input type="number" id="coupon-discount" value="100" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Redemption Uses</label>
+                        <input type="number" id="coupon-uses" value="250" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry (Days)</label>
+                        <input type="number" id="coupon-days" value="30" min="1">
+                    </div>
+                    <button type="submit" class="action-btn">Mint & Sign Coupon</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Active Campaign Codes</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Discount</th>
+                            <th>Uses</th>
+                            <th>Expires</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coupon-table-body">
+                        <tr>
+                            <td><code>FREEPASS2026</code></td>
+                            <td>100% (Free 30-Day)</td>
+                            <td>14 / 500</td>
+                            <td>30 Days</td>
+                            <td><button class="revoke-btn">Revoke</button></td>
+                        </tr>
+                        <tr>
+                            <td><code>LIFESIM50</code></td>
+                            <td>50% Off</td>
+                            <td>28 / 250</td>
+                            <td>30 Days</td>
+                            <td><button class="revoke-btn">Revoke</button></td>
+                        </tr>
+                        <tr>
+                            <td><code>VIPDEV</code></td>
+                            <td>100% (Lifetime Unlock)</td>
+                            <td>1 / 1000</td>
+                            <td>365 Days</td>
+                            <td><button class="revoke-btn">Revoke</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="users" class="tab-section">
+            <div class="card">
+                <h3>Citizen & User Directory</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Role</th>
+                            <th>Active Lives</th>
+                            <th>Entitlement</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>usr_789412a</code></td>
+                            <td>Player</td>
+                            <td>3</td>
+                            <td>Lifetime Universe Pass</td>
+                            <td><span style="color:#00e676;">Active</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>usr_guest_492</code></td>
+                            <td>Guest</td>
+                            <td>1</td>
+                            <td>Free Tier (3 Lives/Day)</td>
+                            <td><span style="color:#00e676;">Active</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Entitlements Section -->
+        <section id="entitlements" class="tab-section">
+            <div class="card">
+                <h3>Granted Entitlements</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Source</th>
+                            <th>Status</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>lifetime_unlock</code></td>
+                            <td>Coupon (VIPDEV)</td>
+                            <td>Permanent</td>
+                            <td>Infinite</td>
+                        </tr>
+                        <tr>
+                            <td><code>pass_30day</code></td>
+                            <td>Google Play / Hook</td>
+                            <td>Active</td>
+                            <td>30 Days</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="tab-section">
+            <div class="card">
+                <h3>Telemetry & Metrics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Daily Active Users (DAU)</span>
+                        <h3>892</h3>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Day 1 Retention</span>
+                        <h3>64.2%</h3>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Day 7 Retention</span>
+                        <h3>38.7%</h3>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Paid Conversion</span>
+                        <h3>5.8%</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Audit Log Section -->
+        <section id="audit" class="tab-section">
+            <div class="card">
+                <h3>Admin Audit Trail (admin_audit)</h3>
+                <ul class="log-stream">
+                    <li><span class="time">[Audit]</span> Admin created coupon code <code>FREEPASS2026</code> with Ed25519 signature</li>
+                    <li><span class="time">[Audit]</span> Admin console unlocked via 6-digit PIN on device</li>
+                    <li><span class="time">[Audit]</span> Server synchronized 20 NPC memories with PocketBase</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Server Section -->
+        <section id="server" class="tab-section">
+            <div class="card">
+                <h3>Embedded Server Architecture</h3>
+                <p>Running <strong>NanoHTTPD v2.3.1</strong> directly inside Android runtime.</p>
+                <p>PocketBase Remote Service: <code>http://127.0.0.1:8090</code></p>
+                <p>Ed25519 Cryptographic Engine: <strong>BouncyCastle Provider</strong></p>
+                <p>Health Check Latency: <strong>&lt; 2 ms</strong> (Localhost loopback)</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

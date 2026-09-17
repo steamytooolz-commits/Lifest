@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: ailifesim-pocketbase
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL:-admin@ailifesim.internal}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD:-AdminMasterPass2026!}
+      - COUPON_PRIVATE_KEY=${COUPON_PRIVATE_KEY}
+      - COUPON_PUBLIC_KEY=${COUPON_PUBLIC_KEY}
+      - ADMIN_SHARED_SECRET=${ADMIN_SHARED_SECRET:-SuperSecretAdminPassphrase2026}
+      - GOOGLE_PLAY_PACKAGE_NAME=${GOOGLE_PLAY_PACKAGE_NAME:-com.aistudio.ailifesim.vzkpxq}
+      - GOOGLE_PLAY_SERVICE_ACCOUNT_JSON=${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON}
+    volumes:
+      - ./pb_data:/pb/pb_data
+      - ./pb_hooks:/pb/pb_hooks:ro
+      - ./pb_migrations:/pb/pb_migrations:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

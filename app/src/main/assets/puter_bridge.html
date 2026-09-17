@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter.js AI & Cloud Operating System Bridge</title>
+    <!-- Official Puter.js V2 Library from docs.puter.com -->
+    <script src="https://js.puter.com/v2/"></script>
+</head>
+<body style="background-color: #0A0E17; color: #00F0FF; font-family: monospace; padding: 12px; margin: 0;">
+    <div id="status">Puter.js Initializing...</div>
+
+    <script>
+        // Mapping of friendly app model names to Puter.js supported model IDs
+        const MODEL_MAP = {
+            'claude-3-7-sonnet': 'claude-3-7-sonnet',
+            'claude-3-5-sonnet': 'claude-3-5-sonnet',
+            'claude-3-opus': 'claude-3-opus',
+            'gpt-4o': 'gpt-4o',
+            'gpt-4o-mini': 'gpt-4o-mini',
+            'gpt-4-turbo': 'gpt-4-turbo',
+            'o1': 'o1',
+            'o3-mini': 'o3-mini',
+            'gemini-2.0-flash': 'gemini-2.0-flash',
+            'gemini-2.0-flash-thinking': 'gemini-2.0-flash-thinking',
+            'gemini-1.5-pro': 'gemini-1.5-pro',
+            'gemini-1.5-flash': 'gemini-1.5-flash',
+            'deepseek-chat': 'deepseek-chat',
+            'deepseek-reasoner': 'deepseek-reasoner',
+            'mistral-large': 'mistral-large',
+            'codestral': 'codestral',
+            'llama-3.3-70b': 'llama-3.3-70b',
+            'qwen-2.5-72b': 'qwen-2.5-72b'
+        };
+
+        function resolveModel(modelName) {
+            if (!modelName) return 'claude-3-7-sonnet';
+            return MODEL_MAP[modelName] || modelName;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const statusEl = document.getElementById('status');
+            if (typeof puter !== 'undefined') {
+                statusEl.innerText = "Puter.js V2 Active & Connected";
+                if (window.AndroidBridge && window.AndroidBridge.onBridgeReady) {
+                    window.AndroidBridge.onBridgeReady(true);
+                }
+            } else {
+                statusEl.innerText = "Puter.js V2 Loading Error";
+                if (window.AndroidBridge && window.AndroidBridge.onBridgeReady) {
+                    window.AndroidBridge.onBridgeReady(false);
+                }
+            }
+        });
+
+        // 1. AI Chat & Streaming (puter.ai.chat)
+        async function chat(prompt, model, requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.ai) {
+                    throw new Error("Puter AI subsystem not initialized");
+                }
+
+                const targetModel = resolveModel(model);
+                
+                // Attempt streaming response
+                try {
+                    const response = await puter.ai.chat(prompt, {
+                        model: targetModel,
+                        stream: true
+                    });
+
+                    let fullText = "";
+                    for await (const part of response) {
+                        if (part && part.text) {
+                            fullText += part.text;
+                            if (window.AndroidBridge && window.AndroidBridge.onStreamChunk) {
+                                window.AndroidBridge.onStreamChunk(requestId, part.text);
+                            }
+                        }
+                    }
+
+                    if (window.AndroidBridge && window.AndroidBridge.onChatSuccess) {
+                        window.AndroidBridge.onChatSuccess(requestId, fullText);
+                    }
+                } catch (streamErr) {
+                    // Fallback to non-streaming chat
+                    const nonStreamResponse = await puter.ai.chat(prompt, {
+                        model: targetModel
+                    });
+
+                    let fullText = "";
+                    if (typeof nonStreamResponse === 'string') {
+                        fullText = nonStreamResponse;
+                    } else if (nonStreamResponse && nonStreamResponse.message && nonStreamResponse.message.content) {
+                        fullText = nonStreamResponse.message.content;
+                    } else if (nonStreamResponse && nonStreamResponse.text) {
+                        fullText = nonStreamResponse.text;
+                    } else {
+                        fullText = JSON.stringify(nonStreamResponse);
+                    }
+
+                    if (window.AndroidBridge && window.AndroidBridge.onChatSuccess) {
+                        window.AndroidBridge.onChatSuccess(requestId, fullText);
+                    }
+                }
+            } catch (err) {
+                console.error("Puter chat error:", err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Puter Chat Error");
+                }
+            }
+        }
+
+        // List all 200+ Puter AI Models (puter.ai.listModels)
+        async function listModels(requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.ai) {
+                    throw new Error("Puter AI subsystem not initialized");
+                }
+                let models = [];
+                if (typeof puter.ai.listModels === 'function') {
+                    models = await puter.ai.listModels();
+                } else {
+                    models = Object.keys(MODEL_MAP).map(k => ({ id: k, name: MODEL_MAP[k] }));
+                }
+                if (window.AndroidBridge && window.AndroidBridge.onModelsListed) {
+                    window.AndroidBridge.onModelsListed(requestId, JSON.stringify(models));
+                }
+            } catch (err) {
+                console.error("List models error:", err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "List Models Error");
+                }
+            }
+        }
+
+        // 2. Text to Image Generation (puter.ai.txt2img)
+        async function txt2img(prompt, requestId, model) {
+            try {
+                if (typeof puter === 'undefined' || !puter.ai) {
+                    throw new Error("Puter AI subsystem not initialized");
+                }
+
+                const options = {};
+                if (model) options.model = model;
+
+                const imgResult = await puter.ai.txt2img(prompt, options);
+                let imgUrl = "";
+
+                if (typeof imgResult === 'string') {
+                    imgUrl = imgResult;
+                } else if (imgResult && imgResult.src) {
+                    imgUrl = imgResult.src;
+                } else if (imgResult instanceof HTMLImageElement) {
+                    imgUrl = imgResult.src;
+                }
+
+                if (window.AndroidBridge && window.AndroidBridge.onImageSuccess) {
+                    window.AndroidBridge.onImageSuccess(requestId, imgUrl);
+                }
+            } catch (err) {
+                console.error("Puter txt2img error:", err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Puter Image Error");
+                }
+            }
+        }
+
+        // 3. Text to Speech (puter.ai.txt2speech)
+        async function txt2speech(text, requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.ai) {
+                    throw new Error("Puter AI subsystem not initialized");
+                }
+
+                const audioResult = await puter.ai.txt2speech(text);
+                let audioUrl = "";
+
+                if (typeof audioResult === 'string') {
+                    audioUrl = audioResult;
+                } else if (audioResult && audioResult.src) {
+                    audioUrl = audioResult.src;
+                } else if (audioResult && audioResult instanceof HTMLAudioElement) {
+                    audioUrl = audioResult.src;
+                }
+
+                if (window.AndroidBridge && window.AndroidBridge.onAudioSuccess) {
+                    window.AndroidBridge.onAudioSuccess(requestId, audioUrl);
+                }
+            } catch (err) {
+                console.error("Puter txt2speech error:", err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Puter TTS Error");
+                }
+            }
+        }
+
+        // 4. Cloud Key-Value Store (puter.kv)
+        async function kvSet(key, valueJson, requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.kv) {
+                    throw new Error("Puter KV subsystem not initialized");
+                }
+                const parsedVal = JSON.parse(valueJson);
+                await puter.kv.set(key, parsedVal);
+                if (window.AndroidBridge && window.AndroidBridge.onKvSuccess) {
+                    window.AndroidBridge.onKvSuccess(requestId, "OK");
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "KV Set Error");
+                }
+            }
+        }
+
+        async function kvGet(key, requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.kv) {
+                    throw new Error("Puter KV subsystem not initialized");
+                }
+                const val = await puter.kv.get(key);
+                const stringified = JSON.stringify(val);
+                if (window.AndroidBridge && window.AndroidBridge.onKvSuccess) {
+                    window.AndroidBridge.onKvSuccess(requestId, stringified);
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "KV Get Error");
+                }
+            }
+        }
+
+        async function kvDel(key, requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.kv) {
+                    throw new Error("Puter KV subsystem not initialized");
+                }
+                await puter.kv.del(key);
+                if (window.AndroidBridge && window.AndroidBridge.onKvSuccess) {
+                    window.AndroidBridge.onKvSuccess(requestId, "DELETED");
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "KV Del Error");
+                }
+            }
+        }
+
+        // 5. Puter Authentication (puter.auth.signIn / signOut / getUser / isSignedIn)
+        async function authSignIn(requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.auth) {
+                    throw new Error("Puter Auth subsystem not initialized");
+                }
+                const res = await puter.auth.signIn();
+                const user = await puter.auth.getUser();
+                if (window.AndroidBridge && window.AndroidBridge.onAuthSuccess) {
+                    window.AndroidBridge.onAuthSuccess(requestId, JSON.stringify(user || { status: "signed_in" }));
+                }
+            } catch (err) {
+                console.error("Puter authSignIn error:", err);
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Auth Sign In Error");
+                }
+            }
+        }
+
+        async function authSignOut(requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.auth) {
+                    throw new Error("Puter Auth subsystem not initialized");
+                }
+                await puter.auth.signOut();
+                if (window.AndroidBridge && window.AndroidBridge.onAuthSuccess) {
+                    window.AndroidBridge.onAuthSuccess(requestId, "SIGNED_OUT");
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Auth Sign Out Error");
+                }
+            }
+        }
+
+        async function authGetUser(requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.auth) {
+                    throw new Error("Puter Auth subsystem not initialized");
+                }
+                const user = await puter.auth.getUser();
+                if (window.AndroidBridge && window.AndroidBridge.onAuthSuccess) {
+                    window.AndroidBridge.onAuthSuccess(requestId, JSON.stringify(user));
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Auth Error");
+                }
+            }
+        }
+
+        async function authIsSignedIn(requestId) {
+            try {
+                if (typeof puter === 'undefined' || !puter.auth) {
+                    throw new Error("Puter Auth subsystem not initialized");
+                }
+                const signedIn = puter.auth.isSignedIn();
+                if (window.AndroidBridge && window.AndroidBridge.onAuthSuccess) {
+                    window.AndroidBridge.onAuthSuccess(requestId, String(signedIn));
+                }
+            } catch (err) {
+                if (window.AndroidBridge && window.AndroidBridge.onError) {
+                    window.AndroidBridge.onError(requestId, err.message || "Auth Error");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
